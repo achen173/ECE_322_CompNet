@@ -1,0 +1,37 @@
+#!/bin/bash
+declare -A rev_cols
+
+for x in submissions/*; do
+        TOTAL=0
+        IFS=$'\n'       # make newlines the only separator
+        for j in $(cat input.txt); do
+                VALUE=$(echo "$j" | awk '{print $NF}')
+                KEY=$(echo "$j" | awk '{ if (match($0,"[0-9]")) {
+                                name=substr($0,0,match($0,"[0-9]")-1)
+                                print name}}')
+                APPEAR=$(grep -o -i $KEY $x | wc -l)
+      		VALWORD=$(echo $APPEAR*$VALUE | bc -l)
+                TOTAL=$(echo $TOTAL+$VALWORD | bc -l)
+        done
+	NAME="${x##*/}"
+	# write conditional statement to get rid of trailing zeros
+	if [[ $TOTAL == *.* ]] ; then # checks if there is a decimal
+		#echo $TOTAL
+		#[[ "${TOTAL: -1}" == "0" ]] && echo not ok || echo ok
+		if [[ "${TOTAL: -1}" == "0" ]]; then
+			NEW=$(echo $TOTAL  | awk ' sub("\\.*0+$","") ')
+   			#echo $NEW
+			rev_cols["$NAME"]=$NEW
+		else
+			#echo Test
+			rev_cols["$NAME"]=$TOTAL
+		fi
+	else
+		rev_cols["$NAME"]=$TOTAL
+	fi
+done
+
+for k in "${!rev_cols[@]}"; do
+        TOTAL="${rev_cols["$k"]}"
+	echo $TOTAL $k
+done | "sort" -rn -k1
