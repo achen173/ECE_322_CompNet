@@ -315,10 +315,10 @@ int builtin_cmd(char **argv, char *cmdline)
         return 1;
     // } else if(strstr(cmdline, "<") != NULL || strstr(cmdline, ">") != NULL){
     } else if(strstr(cmdline, ">") != NULL){
+        close(1); // Release fd no - 1
+        open(argv[3], O_WRONLY|O_CREAT,S_IRWXU|S_IRWXG|S_IRWXO);
         argv[2] = NULL;
         argv[3] = NULL;
-        close(1); // Release fd no - 1
-        open("stdout.txt", O_WRONLY|O_CREAT,S_IRWXU|S_IRWXG|S_IRWXO);
         if (fork() == 0) {
             if(execve(argv[0], argv, environ) < 0){
                 printf("%s: Command not found.\n", argv[0]); 
@@ -332,7 +332,7 @@ int builtin_cmd(char **argv, char *cmdline)
         return 0;
     }
 }
-// /bin/cat input.txt > /bin/out.txt
+// /bin/cat input.txt > out.txt
 
 void do_bgfg(char **argv) {
     /* 
