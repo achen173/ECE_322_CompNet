@@ -1,0 +1,69 @@
+/*
+ * client.c
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include "csapp.h"
+#include <string.h>
+
+int main(int argc, char **argv) 
+{
+    
+    int clientfd;
+    char *method;
+    char *num1, *num2;
+    char *host, *port, buf[MAXLINE], buf2[MAXLINE], buf_initial[MAXLINE], buf_final[MAXLINE];
+    rio_t rio;
+    if (argc != 3) {
+        fprintf(stderr, "usage: %s <num1> <num2>\n", argv[0]);
+        exit(0);
+    }
+
+    num1 = argv[1];
+    num2 = argv[2];
+    method = "sample.addmultiply";
+    host = "localhost";
+    port = "8080";
+    char temp1[MAXLINE];
+    char temp2[MAXLINE];
+    char temp3[MAXLINE];
+    char temp4[MAXLINE];
+    clientfd = Open_clientfd(host, port);
+    Rio_readinitb(&rio, clientfd);
+    strcat(buf_initial, "POST /RPC2 HTTP/1.1\nHost: localhost:8080\nContent-Type: text/xml\nContent-Length: 180\n\n");
+    Rio_writen(clientfd, buf_initial, strlen(buf_initial));
+    strcat(buf_final, "<?xml version='1.0'?>\n<methodCall>\n<methodName>");
+    Rio_writen(clientfd, buf_final, strlen(buf_final));
+    // Rio_writen(clientfd, "sample.addmultiply", strlen("sample.addmultiply"));
+    Rio_writen(clientfd, &method, strlen(method));
+    strcat(temp3, "</methodName>\n<params>\n<param>\n<value><double>");
+    Rio_writen(clientfd, temp3, strlen(temp3));
+    Rio_writen(clientfd, &num1, strlen(num1));
+    strcat(temp1, "</double></value>\n</param>\n<param>\n<value><double>");
+    Rio_writen(clientfd, temp1, strlen(temp1));
+    Rio_writen(clientfd, &num2, strlen(num2));
+    strcat(temp2, "</double></value>\n</param>\n</params>\n</methodCall>\n");
+    Rio_writen(clientfd, temp2, strlen(temp2));
+    // Rio_writen(clientfd, buf_final, strlen(buf_final));
+    // Rio_readlineb(&rio, buf, MAXLINE);
+    Rio_readn(clientfd, buf, MAXLINE);
+    Rio_readn(clientfd, buf2, MAXLINE);
+    Close(clientfd);  
+    printf("%s", buf); 
+    printf("%s hello",buf2);
+    exit(0);  
+}  
+
+    // http://localhost:3000/
+    //   wout.write("<?xml version=\"1.0\"?>\r\n");  
+    //   wout.write("<methodCall>\r\n"); 
+    //   wout.write(
+    //    "  <methodName>calculateFibonacci</methodName>\r\n");
+    //   wout.write("  <params>\r\n"); 
+    //   wout.write("    <param>\r\n"); 
+    //   wout.write("      <value><int>"); 
+    //   wout.write(index); 
+    //   wout.write("</int></value>\r\n"); 
+    //   wout.write("    </param>\r\n"); 
+    //   wout.write("  </params>\r\n"); 
+    //   wout.write("</methodCall>\r\n"); 

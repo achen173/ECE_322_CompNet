@@ -1,0 +1,1 @@
+    strcat(buf_final, "<?xml version='1.0'?>\r\n<methodCall>\r\n<methodName>sample.addmultiply</methodName>\r\n<params>\r\n<param>\r\n<value><double>2</double></value>\r\n</param>\r\n<param>\r\n<value><double>3</double></value>\r\n</param>\r\n</params>\r\n</methodCall>\r\n");

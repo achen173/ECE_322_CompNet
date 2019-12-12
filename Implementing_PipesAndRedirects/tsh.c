@@ -2,16 +2,9 @@
  * tsh - A tiny shell program with job control
  * 
  * Alan Chen 31271652
- * Chidinma Ejiofor 30773084
  * 
- * ECE322 Assignment 3 - Managing Shell
+ * ECE322 Assignment 5 - Pipes and Redirects
  * 
- * Work Cited Page:
- * https://www.gnu.org/software/libc/manual/html_node/Process-Signal-Mask.html
- * https://stackoverflow.com/questions/6757188/why-sigprocmask-is-used-to-block-sigchld-from-delivering-in-the-following-code
- * https://stackoverflow.com/questions/33508997/waitpid-wnohang-wuntraced-how-do-i-use-these
- * http://www.cs.cmu.edu/afs/cs/academic/class/15213-f13/www/recitations/rec9_anitazha.pdf
- * https://gist.github.com/seanrivera
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,6 +84,7 @@ void listjobs(struct job_t *jobs);
 void usage(void);
 void unix_error(char *msg);
 void app_error(char *msg);
+int IO_finder(char **argv, char s[]);
 typedef void handler_t(int);
 handler_t *Signal(int signum, handler_t *handler);
 
@@ -299,11 +293,20 @@ int parseline(const char *cmdline, char **argv)
  * builtin_cmd - If the user has typed a built-in command then execute
  *    it immediately.  
  */
+int IO_finder(char **argv, char s[]){
+    int occurence = 0;
+    int i = 0;
+    while(argv[i] != NULL){
+        if(strstr(argv[i], s)){
+            occurence += 1;
+            }
+        i += 1;
+        }
+    return occurence;
+}
+
 int builtin_cmd(char **argv, char *cmdline) 
 {
-    //char *argv[MAXARGS];        // Argument list execve()
-    char buf[MAXLINE];          // Holds modified copppmand line
-    strcpy(buf, cmdline);
     if (!strcmp(argv[0], "quit")){ /* quit command */
 	    exit(0);
         return 1;
@@ -313,26 +316,203 @@ int builtin_cmd(char **argv, char *cmdline)
     } else if (!strcmp(argv[0], "bg") || !strcmp(argv[0], "fg")){    //foreground and background
         do_bgfg(argv);
         return 1;
-    // } else if(strstr(cmdline, "<") != NULL || strstr(cmdline, ">") != NULL){
-    } else if(strstr(cmdline, ">") != NULL){
-        close(1); // Release fd no - 1
-        open(argv[3], O_WRONLY|O_CREAT,S_IRWXU|S_IRWXG|S_IRWXO);
-        argv[2] = NULL;
-        argv[3] = NULL;
-        if (fork() == 0) {
-            if(execve(argv[0], argv, environ) < 0){
-                printf("%s: Command not found.\n", argv[0]); 
+    } else if((IO_finder(argv, ">") != 0) || (IO_finder(argv, "<") != 0)){
+        char *rtai[256]; // [redirect type, redirct index, redirect type ...]
+        int l = 0;
+        char *command[256];
+        int m = 0;
+        while(argv[m] != NULL){
+            if (strstr(argv[m],">") || strstr(argv[m], "<")){
+                rtai[l] = argv[m];
+                rtai[++l] = m;
+                l+=1;
             }
-            exit(1);
+            m++;
         }
-        close(1);
-        dup(0);
+        rtai[l] = NULL;
+        int j = 0;
+        int k = 0;
+        while (!strstr(argv[j],">") || !strstr(argv[j], "<")){   // perhaps we only need the first command
+            command[k] = argv[j];
+            j++;
+            if(argv[j] == NULL){
+                break;
+            }
+            k++;	
+        }
+        command[--k] = NULL; // the first command is all set for execution
+        int counter = 0;
+        int newstdout;
+        int fdgt = 0;
+        int newstdin;
+        int fdlt = 0;
+        while(rtai[counter] != NULL){
+            if(isdigit(rtai[counter][0])){    // EX. /bin/cat 2> out.txt
+                fdgt = 2;
+                newstdout = open(argv[(int)rtai[counter+1] + 1], O_WRONLY|O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO);     // open file and link it to stdout
+            }else if(!strcmp(rtai[counter], ">>")){    // EX. /bin/cat >> out.txt
+                fdgt = 1;
+                newstdout = open(argv[(int)rtai[counter+1] + 1], O_WRONLY|O_CREAT|O_APPEND, S_IRWXU|S_IRWXG|S_IRWXO);    // open file and link it to stdout
+            }else if(!strcmp(rtai[counter], ">")){    // EX. /bin/cat > out.txt
+                fdgt = 1;
+                newstdout = open(argv[(int)rtai[counter+1] + 1], O_WRONLY|O_CREAT| O_TRUNC, S_IRWXU|S_IRWXG|S_IRWXO);    // open file and link it to stdout
+            }else if(!strcmp(rtai[counter], "<")){
+                fdlt = 1;
+                newstdin = open(argv[(int)rtai[counter+1] + 1], O_RDONLY, S_IRWXU|S_IRWXG|S_IRWXO);    // open file and link it to stdin
+            }
+        counter += 2;
+        }
+        int stop = 0;
+        if(fdgt >= 1){
+            close(fdgt);  // closes STDOUT
+            dup(newstdout);
+        } 
+        if(fdlt == 1){
+            int s;
+            pid_t pid;
+            if((pid = fork()) == 0){
+                close(0);
+                dup2(newstdin, STDIN_FILENO);
+                execlp(argv[0], argv[0], (char *)0);
+            }
+            waitpid(pid, &s, 0);
+            stop = 1;
+        }
+        if(fdgt >= 1 && !stop){
+            if (fork() == 0) {
+                if(execvp(command[0], command) < 0){
+                    printf("%s: Command not found. \n", argv[0]); 
+                }
+                // printf("\n\n");
+                exit(1);
+            }
+        } 
+        if(fdgt == 2){
+            close(newstdout);
+            dup2(fdgt, STDERR_FILENO);
+        } 
+        if(fdgt == 1){
+            close(newstdout);
+            dup2(2,1);
+        } 
+        if(fdlt == 1){
+            close(newstdin);
+            dup2(0, STDIN_FILENO);
+        }
+        return 1;
+    } else if(IO_finder(argv, "|") != 0){
+        int pipe1[2];
+        int pipe2[2];
+        int temp = 0;
+        char *command[256];
+        int end = 0;
+        pid_t pid;
+        int i = 0;
+        int j = 0;
+        int k = 0;
+        int l = 0;
+
+        // int l = 0;
+        while (argv[l] != NULL){
+            if (strcmp(argv[l],"|") == 0){
+                temp++;
+            }
+            l++;
+        }
+        temp++;
+        // for(int l = 0; l < sizeof(argv); l++){
+        //     if (!strcmp(argv[l],"|")){
+        //         temp++;
+        //     }
+        // }
+        while (argv[j] != NULL && end != 1){
+            k = 0;
+            // populate the command array for each iteration; formatting for exec
+            while (strcmp(argv[j],"|") != 0){
+                command[k] = argv[j];
+                j++;	
+                if (argv[j] == NULL){
+                    end = 1;
+                    k++;
+                    break;
+                }
+                k++;
+            }
+            command[k] = NULL;  // set pipe to Null since it is a EOF character
+            j++;    // gets next index of argv since I didn't iterate through all		
+            if (i % 2 != 0){
+                pipe(pipe1); // for odd i
+            }else{
+                pipe(pipe2); // for even i
+            }
+            
+            if((pid = fork()) < 0){				
+                printf("%s\n", "Forking Issue");
+                return;
+            }
+            // First Index of Pipe = STDIN_FILENO
+            // Second Index of Pipe = STDOUT_FILENO
+            if(pid==0){
+                if (i == 0){    // for the first command
+                    dup2(pipe2[1], STDOUT_FILENO);  // connect out and stdout
+                }
+                else if (i == temp - 1){    // just one pipe
+                    if (temp % 2 != 0){ // for odd number of commands
+                        dup2(pipe1[0],STDIN_FILENO);
+                    }else{ // for even number of commands
+                        dup2(pipe2[0],STDIN_FILENO);
+                    }
+                }else{ // for odd i
+                    if (i % 2 != 0){
+                        dup2(pipe2[0],STDIN_FILENO); 
+                        dup2(pipe1[1],STDOUT_FILENO);
+                    }else{ // for even i
+                        dup2(pipe1[0],STDIN_FILENO); 
+                        dup2(pipe2[1],STDOUT_FILENO);					
+                    } 
+                }
+                
+                if (execvp(command[0],command) < 0){
+                    kill(getpid(),SIGTERM);
+                }		
+            }
+                    
+            // CLOSING DESCRIPTORS ON PARENT
+            if (i == 0){    // for the first command
+                close(pipe2[1]);
+            }
+            else if (i == temp - 1){    // just one pipe
+                if (temp % 2 != 0){					
+                    close(pipe1[0]);
+                }else{					
+                    close(pipe2[0]);
+                }
+            }else{
+                if (i % 2 != 0){					
+                    close(pipe2[0]);
+                    close(pipe1[1]);
+                }else{					
+                    close(pipe1[0]);
+                    close(pipe2[1]);
+                }
+            }
+                    
+            waitpid(pid,NULL,0);
+                    
+            i++;	
+        }
         return 1;
     } else {
         return 0;
     }
 }
+// My Notes
+// dup2(in, STDIN_FILENO);    // 0 points to whateever in is pointing to
+// /usr/bin/sort input.txt >> out.txt
+// /bin/sort input.txt 2> out.txt
+// /bin/cat < input.txt
 // /bin/cat input.txt > out.txt
+// /bin/cat input.txt >> out.txt
 
 void do_bgfg(char **argv) {
     /* 

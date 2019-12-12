@@ -1,0 +1,72 @@
+/*
+ * client.c
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include "csapp.h"
+#include <string.h>
+
+int main(int argc, char **argv) 
+{
+    
+    int clientfd;
+    char *num1, *num2;
+    char *host, *port, buf[MAXLINE], buf2[MAXLINE], buf_initial[MAXLINE], buf_final[MAXLINE];
+    rio_t rio;
+    if (argc != 3) {
+        fprintf(stderr, "usage: %s <num1> <num2>\n", argv[0]);
+        exit(0);
+    }
+
+    num1 = argv[1];
+    num2 = argv[2];
+    printf("CNUM1: %s NUM2: %s \n", num1, num2);
+    char *method = "sample.addmultiply";
+    host = "localhost";
+    port = "8080";
+    char initial_setup[MAXLINE];
+    // sprintf(pszRequest, "GET /%s HTTP/1.1\r\nHost: %s\r\nContent-Type: text/plain\r\n\r\n", pszResourcePath, pszHostAddress);
+    char temp2[MAXLINE];
+    char temp3[MAXLINE];
+    char temp4[MAXLINE];
+    clientfd = Open_clientfd(host, port);
+    // Rio_readinitb(&rio, clientfd);
+    sprintf(initial_setup, "POST /RPC2 HTTP/1.0\r\nHost: %s\r\nContent-Type: text/plain\nContent-Length: 180\r\n\r\n", "localhost:8080");
+    // strcat(buf_initial, "POST /RPC2 HTTP/1.1\nHost: localhost:8080\nContent-Type: text/xml\nContent-Length: 180\n");
+    Rio_writen(clientfd, initial_setup, strlen(initial_setup));
+    // printf("CNUM1: %s \n", initial_setup);
+    //strcat(temp1, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<methodCall>\r\n\t<methodName>\"sample.addmultiply\"</methodName>\r\n\t<params>\r\n\t\t<param>\r\n\t\t\t<value><double>2</double></value>\r\n\t\t\t<value><double>3</double></value>\r\n\t\t</param>\r\n\t</params>\r\n</methodCall>\r\n\r\n");
+    // strcat(temp1, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<methodCall>\r\n\t<methodName>\"sample.addmultiply\"</methodName>\r\n\t<params>\r\n\t\t<param>\r\n\t\t\t<value><double>2</double></value>\r\n\t\t</param>\r\n\t\t<param>\r\n\t\t\t<value><double>3</double></value>\r\n\t\t</param>\r\n\t</params>\r\n</methodCall>\r\n\r\n");
+    // Rio_writen(clientfd, temp1, strlen(temp1));
+
+    Rio_writen(clientfd, "<?xml version=\"1.0\"?>\n<methodCall>\n<methodName>", strlen("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<methodCall>\n<methodName>"));
+    Rio_writen(clientfd, &method, strlen(method));
+    Rio_writen(clientfd, "</methodName>\n<params>\n<param>\n<value><int>", strlen("</methodName>\n<params>\n<param>\n<value><int>"));
+    Rio_writen(clientfd, buf_final, strlen(buf_final));
+    Rio_writen(clientfd, num1, strlen(num1));
+    Rio_writen(clientfd, "</int></value>\n</param>\n<param>\n<value><int>", strlen("</int></value>\n</param>\n<param>\n<value><int>"));
+    Rio_writen(clientfd, num2, strlen(num2));
+    Rio_writen(clientfd, "</int></value>\n</param>\n</params>\n</methodCall>\n", strlen("</int></value>\n</param>\n</params>\n</methodCall>\n"));
+    Rio_readn(clientfd, buf2, MAXLINE);
+    Rio_readn(clientfd, temp4, MAXLINE);
+    Close(clientfd);  
+    printf("%s", buf2); 
+    //printf("%s hello",temp1);
+    // strcat(temp1, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<methodCall>\r\n\t<methodName>sample.addmultiply</methodName>\r\n\t<params>\r\n\t\t<param>\r\n\t\t\t<value><double>2</double></value>\r\n\t\t</param>\r\n\t\t<param>\r\n\t\t\t<value><double>3</double></value>\r\n\t\t</param>\r\n\t</params>\r\n</methodCall>\r\n\r\n");
+    printf("\n\n%s\n\n",temp4);
+    exit(0);  
+}  
+
+    // http://localhost:3000/
+    //   wout.write("<?xml version=\"1.0\"?>\r\n");  
+    //   wout.write("<methodCall>\r\n"); 
+    //   wout.write(
+    //    "  <methodName>calculateFibonacci</methodName>\r\n");
+    //   wout.write("  <params>\r\n"); 
+    //   wout.write("    <param>\r\n"); 
+    //   wout.write("      <value><int>"); 
+    //   wout.write(index); 
+    //   wout.write("</int></value>\r\n"); 
+    //   wout.write("    </param>\r\n"); 
+    //   wout.write("  </params>\r\n"); 
+    //   wout.write("</methodCall>\r\n"); 

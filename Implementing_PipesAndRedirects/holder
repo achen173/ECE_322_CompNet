@@ -1,0 +1,203 @@
+int builtin_cmd(char **argv, char *cmdline) 
+{
+    // printf("\n1: %s 2: %s 3: %s 4: %s\n %d \n",argv[0],argv[1],argv[2],argv[3], sizeof(argv)); 
+    printf("%d \n", sizeof(argv));
+    //printf("%s \n", argv[6]);
+    if (!strcmp(argv[0], "quit")){ /* quit command */
+	    exit(0);
+        return 1;
+    } else if (!strcmp(argv[0], "jobs")){   //revise need to do the jobs
+        listjobs(jobs);
+        return 1;   
+    } else if (!strcmp(argv[0], "bg") || !strcmp(argv[0], "fg")){    //foreground and background
+        do_bgfg(argv);
+        return 1;
+    } else if((IO_finder(argv, ">") != 0) || (IO_finder(argv, "<") != 0)){
+        char *rtai[256]; // [redirect type, redirct index, redirect type ...]
+        int l = 0;
+        char *command[256];
+        printf("Carrot Finder\n");
+        int m = 0;
+        while(argv[m] != NULL){
+            if (strstr(argv[m],">") || strstr(argv[m], "<")){
+                rtai[l] = argv[m];
+                rtai[++l] = m;
+                l+=2;
+            }
+            m++;
+        }
+        rtai[l] = NULL;
+        int j = 0;
+        int k = 0;
+        while (!strstr(argv[j],">") || !strstr(argv[j], "<")){   // perhaps we only need the first command
+            command[k] = argv[j];
+            j++;
+            if(argv[j] == NULL){
+                break;
+            }
+            k++;	
+        }
+        command[--k] = NULL; // the first command is all set for execution
+        // set up piping
+        int w = 0;
+        printf("%s", rtai[w]);
+        while(rtai[w] != NULL){
+            printf("Carrot Finder");
+            printf("\n%s\n",rtai[w]);
+            printf("%d\n",rtai[++w]);
+            w += 2;
+        }
+        int counter = 0;
+        int newstdout;
+        int fd = 1;
+        while(rtai[counter] != NULL){
+            printf("%s","Carrot Finder");
+            if(isdigit(rtai[counter][0])){    // EX. /bin/cat 2> out.txt
+                int fd = rtai[counter][0];    
+                newstdout = open(argv[(int)rtai[counter+1] + 1], O_WRONLY|O_CREAT| O_TRUNC, S_IRWXU|S_IRWXG|S_IRWXO);    // open file and link it to stdout
+            }else if(!strcmp(rtai[counter], ">>")){    // EX. /bin/cat >> out.txt
+                newstdout = open(argv[(int)rtai[counter+1] + 1], O_WRONLY|O_CREAT|O_APPEND, S_IRWXU|S_IRWXG|S_IRWXO);    // open file and link it to stdout
+            }else if(!strcmp(rtai[counter], ">")){    // EX. /bin/cat > out.txt
+                printf("\n%s\n",argv[(int)rtai[counter+1] + 1]);
+                newstdout = open(argv[(int)rtai[counter+1] + 1], O_WRONLY|O_CREAT| O_TRUNC, S_IRWXU|S_IRWXG|S_IRWXO);    // open file and link it to stdout
+            }
+        counter += 2;
+        }
+        // int first_index = rtai[1];
+        // argv[first_index] = NULL;
+        printf("%s\n%s\n%s\n%s\n%s\n", command[0], command[1], command[2], command[3], command[4]);
+        close(fd);
+        dup(newstdout);
+        if (fork() == 0) {
+            if(execvp(command[0], command) < 0){
+                printf("%s: Command not found. \n", argv[0]); 
+            }
+            printf("\n\n");
+            exit(1);
+        }
+        close(newstdout);
+        if(fd == 1){
+            dup2(2,1);
+        }else{
+            dup2(fd, STDERR_FILENO);
+        }
+        return 1;
+
+    } else if(sizeof(argv) <= 4 && !strcmp(argv[1], "<")){ 
+        int in = open(argv[2], O_RDONLY, S_IRWXU|S_IRWXG|S_IRWXO);    // open file and link it to stdin
+        int s;
+        pid_t pid;
+        if((pid = fork()) == 0){
+            close(0);
+            dup2(in, STDIN_FILENO);
+            execlp(argv[0], argv[0], (char *)0);
+        }
+        waitpid(pid, &s, 0);
+        return 1; 
+    } else if(IO_finder(argv, "|") != 0){
+        int pipe1[2];
+        int pipe2[2];
+        int num_cmds = 0;
+        char *command[256];
+        
+        int err = -1;
+        int end = 0;
+        pid_t pid;
+        int i = 0;
+        int j = 0;
+        int k = 0;
+        int l = 0;
+
+        // int l = 0;
+        while (argv[l] != NULL){
+            if (strcmp(argv[l],"|") == 0){
+                num_cmds++;
+            }
+            l++;
+        }
+        num_cmds++;
+        // for(int l = 0; l < sizeof(argv); l++){
+        //     if (!strcmp(argv[l],"|")){
+        //         num_cmds++;
+        //     }
+        // }
+        while (argv[j] != NULL && end != 1){
+            k = 0;
+            // populate the command array for each iteration; formatting for exec
+            while (strcmp(argv[j],"|") != 0){
+                command[k] = argv[j];
+                j++;	
+                if (argv[j] == NULL){
+                    end = 1;
+                    k++;
+                    break;
+                }
+                k++;
+            }
+            command[k] = NULL;  // set pipe to Null since it is a EOF character
+            j++;    // gets next index of argv since I didn't iterate through all		
+            if (i % 2 != 0){
+                pipe(pipe1); // for odd i
+            }else{
+                pipe(pipe2); // for even i
+            }
+            
+            
+            if((pid = fork())<0){				
+                printf("%s\n", "Forking Issue");
+                return;
+            }
+            if(pid==0){
+                if (i == 0){
+                    dup2(pipe2[1], STDOUT_FILENO);
+                }
+                else if (i == num_cmds - 1){
+                    if (num_cmds % 2 != 0){ // for odd number of commands
+                        dup2(pipe1[0],STDIN_FILENO);
+                    }else{ // for even number of commands
+                        dup2(pipe2[0],STDIN_FILENO);
+                    }
+                }else{ // for odd i
+                    if (i % 2 != 0){
+                        dup2(pipe2[0],STDIN_FILENO); 
+                        dup2(pipe1[1],STDOUT_FILENO);
+                    }else{ // for even i
+                        dup2(pipe1[0],STDIN_FILENO); 
+                        dup2(pipe2[1],STDOUT_FILENO);					
+                    } 
+                }
+                
+                if (execvp(command[0],command)==err){
+                    kill(getpid(),SIGTERM);
+                }		
+            }
+                    
+            // CLOSING DESCRIPTORS ON PARENT
+            if (i == 0){
+                close(pipe2[1]);
+            }
+            else if (i == num_cmds - 1){
+                if (num_cmds % 2 != 0){					
+                    close(pipe1[0]);
+                }else{					
+                    close(pipe2[0]);
+                }
+            }else{
+                if (i % 2 != 0){					
+                    close(pipe2[0]);
+                    close(pipe1[1]);
+                }else{					
+                    close(pipe1[0]);
+                    close(pipe2[1]);
+                }
+            }
+                    
+            waitpid(pid,NULL,0);
+                    
+            i++;	
+        }
+        return 1;
+    } else {
+        return 0;
+    }
+}

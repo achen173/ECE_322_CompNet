@@ -1,0 +1,65 @@
+/*
+ * client.c
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include "csapp.h"
+#include <string.h>
+
+int main(int argc, char **argv) 
+{
+    
+    int clientfd;
+    char *num1, *num2;
+    char *host, *port, buf2[MAXLINE];
+    rio_t rio;
+    if (argc != 3) {
+        fprintf(stderr, "usage: %s <num1> <num2>\n", argv[0]);
+        exit(0);
+    }
+    num1 = argv[1];
+    num2 = argv[2];
+    host = "localhost";
+    port = "8080";
+    char initial_setup[MAXLINE];
+    char final_setup[MAXLINE];
+    clientfd = Open_clientfd(host, port);
+    sprintf(final_setup, "<?xml version=\"1.0\" encoding=\"UTF-8\"?><methodCall><methodName>%s</methodName><params><param><value><decimal>%s</decimal></value></param><param><value><decimal>%s</decimal></value></param></params></methodCall>","sample.addmultiply",num1,num2);
+    sprintf(initial_setup, "POST /RPC2 HTTP/1.1\r\nHost: %s\r\nContent-Type: text/xml\nContent-Length: %d\r\n\r\n", "localhost:8080",strlen(final_setup));
+    Rio_writen(clientfd, initial_setup, strlen(initial_setup));
+    Rio_writen(clientfd, final_setup, strlen(final_setup));
+    Rio_readn(clientfd, buf2, MAXLINE);
+    Close(clientfd);  
+    printf("%s\n", buf2); 
+    int print2 = 0;
+    char a = '>'; 
+    char b = '<';
+    char c = '\n';
+    // All the answers are stored in buf2, therefore we need to parse it
+    int i = 0;
+    while(i < sizeof(buf2)){
+        if(buf2[i] == a){
+            break;
+        }
+        i += 1;
+    }
+    while(i < strlen(buf2)){
+        if(buf2[i] == a){
+            print2 = 1;// break;
+            i += 1;
+            continue;
+        }
+        if(buf2[i] != b && buf2[i] != c && print2){
+            printf("%c",buf2[i]);
+            if(buf2[i+1] == b){
+                printf("%s", "  ");
+            }
+        }
+        if(buf2[i] == b){
+            print2 = 0;
+        }
+        i += 1;
+    }
+    printf("\n");
+    exit(0);  
+} 

@@ -1,0 +1,1 @@
+sprintf(final_setup, "<?xml version=\"1.0\" encoding=\"UTF-8\"?><methodCall><methodName>%s</methodName><params><param><value><double>%d</double></value></param><param><value><double>%d</double></value></param></params></methodCall>","sample.addmultiply",2.0,3.0);

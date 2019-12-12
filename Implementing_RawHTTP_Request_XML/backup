@@ -1,0 +1,59 @@
+/*
+ * client.c
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include "csapp.h"
+#include <string.h>
+
+int main(int argc, char **argv) 
+{
+    
+    int clientfd;
+    char *num1, *num2;
+    char *host, *port, buf[MAXLINE], buf_initial[MAXLINE], buf_final[MAXLINE];
+    rio_t rio;
+    printf("%s","Hello world 1\n");
+    if (argc != 3) {
+        fprintf(stderr, "usage: %s <num1> <num2>\n", argv[0]);
+        exit(0);
+    }
+
+    num1 = argv[1];
+    num2 = argv[2];
+
+    host = "localhost";
+    port = "8080";
+    clientfd = Open_clientfd(host, port);
+// <?xml version="1.0"?>
+// <methodCall>
+// <methodName>sample.sumAndDifference</methodName>
+// <params>
+// <param><value><i4>2</i4></value></param>
+// <param><value><i4>3</i4></value></param>
+// </params>
+// </methodCall>
+    // Rio_readinitb(&rio, clientfd);
+    // printf("%s", "HelloWorld 2"); 
+    strcat(buf_initial, "POST /RPC2 HTTP/1.1");
+        // strcat(buf_initial, "\n");
+    Rio_writen(clientfd, buf_initial, strlen(buf_initial));
+    // printf("%s", "HelloWorld 3"); 
+    strcpy(buf_final, "<?xml version=");
+    strcpy(buf_final, "1.0");
+    strcpy(buf_final, "?><methodCall><methodName>sample.addmultiply</methodName><params><param><value><float>2.41</float></value></param><param><value><float>2.41</float></value></param></params></methodCall>");
+    strcpy(buf_final, "\n");
+    // Rio_writen(clientfd, buf_final, strlen(buf_final));
+    // printf("%s", "HelloWorld 4"); 
+    // rio_writen(clientfd, num1, strlen(num1)); 
+    // Rio_readinitb(&rio, clientfd);
+    // while (Fgets(buf, MAXLINE, stdin) != NULL) {
+    //     Rio_writen(clientfd, buf, strlen(buf));
+  //  Rio_readlineb(&rio, buf, MAXLINE);
+    // Fputs(buf, stdout);
+    // }
+    // printf("%s", "HelloWorld"); 
+    Close(clientfd);  
+    printf("%s", "Hello End World"); 
+    exit(0);  
+}  
